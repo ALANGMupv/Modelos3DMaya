@@ -1,0 +1,22 @@
+# Maya temporary / backup files
+*.tmp
+*.bak
+*.swp
+*.log
+
+# Maya autosaves / recovery
+autosave/
+AutoSave/
+mayaSwatches/
+incrementalSave/
+
+# Maya crash/recovery files
+*.crash
+*.dmp
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
