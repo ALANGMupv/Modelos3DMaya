@@ -87,6 +87,12 @@ LUNA_AZIMUT = 3.0
 LUNA_DISTANCIA = 40000.0
 LUNA_RADIO = 1000.0
 
+# Ambiente tenebroso (Hardware 2.0, lo que se ve en el visor y en el playblast).
+AMBIENTE_FUERA = 0.35      # luz ambiente en los planos de fuera (A y G)
+AMBIENTE_DENTRO = 0.1      # en los de dentro: mas bajo = rincones mas oscuros
+OCLUSION = 1.2             # oscurece esquinas y uniones (SSAO); 0 = apagado
+RESPLANDOR = 0.6           # halo alrededor de las bombillas (bloom); 0 = apagado
+
 MARGEN_ENCUADRE = 1.2      # cuanto mas alla del encuadre se conserva vegetacion
 SEMILLA = 3                # cambia el numero para otro parpadeo y otra sacudida
 
@@ -477,18 +483,37 @@ for hoja, sentido in hojas:
     cmds.keyTangent(hoja, attribute="rotateY", time=(g0, g0), outTangentType="linear")
 
 # Luces del recibidor: calidas, con un parpadeo leve, como bombillas viejas.
+# Con decayRate=2 la luz cae rapido con la distancia: deja charcos de luz junto
+# a cada lampara y rincones a oscuras (por eso la intensidad es tan alta). Sin
+# sombras: la luz esta pegada a la tulipa y la lampara se sombreaba a si misma.
+# Cuando aparece el fantasma, titubean; en el susto, apagon; al huir, parpadeo.
+parpadeo = {}  # fotograma -> cuanto de su fuerza normal da la bombilla
+for i, factor in enumerate((0.25, 1.0, 0.15, 0.8, 0.3, 1.0)):
+    parpadeo[c0 + 2 * i] = factor
+for i, factor in enumerate((0.05, 0.05, 0.05, 1.25, 0.6, 1.0)):
+    parpadeo[F_SUSTO + i] = factor
+for i, factor in enumerate((0.3, 1.0, 0.2, 1.0)):
+    parpadeo[F_HUIDA + 2 * i] = factor
 luces_interior = []
-for nombre, posicion, fuerza in (("LUZ_recibidor_aplique", (-1835, 108, -112), 120.0),
-                                 ("LUZ_recibidor_techo", (-1930, 135, 40), 95.0),
-                                 ("LUZ_fondo_aplique", (-1715, 108, 146), 110.0)):
+for nombre, posicion, fuerza in (("LUZ_recibidor_aplique", (-1835, 108, -112), 26400.0),
+                                 ("LUZ_recibidor_techo", (-1930, 135, 40), 12500.0),
+                                 ("LUZ_fondo_aplique", (-1715, 108, 146), 24200.0)):
     luz = cmds.pointLight(name=nombre, rgb=(1.0, 0.66, 0.34), intensity=fuerza)
-    cmds.setAttr(luz + ".decayRate", 1)
+    cmds.setAttr(luz + ".decayRate", 2)
     cmds.setAttr(luz + ".useDepthMapShadows", 0)
+    cmds.setAttr(luz + ".useRayTraceShadows", 0)
     luz_t = cmds.listRelatives(luz, parent=True)[0]
     cmds.move(posicion[0], posicion[1], posicion[2], luz_t)
-    for fotograma in range(a0, F_FIN + 1, 3):
-        clave(luz, "intensity", fotograma, fuerza * random.uniform(0.82, 1.08), "linear")
+    for fotograma in sorted(set(range(a0, F_FIN + 1, 3)) | set(parpadeo)):
+        normal = random.uniform(0.82, 1.08) if (fotograma - a0) % 3 == 0 else 1.0
+        clave(luz, "intensity", fotograma, fuerza * parpadeo.get(fotograma, normal), "linear")
     luces_interior.append(luz_t)
+
+# Dentro de la casa se baja la luz ambiente para que haya sombras de verdad; en
+# los planos de fuera (A y G) se queda como estaba. El cambio cae en los cortes.
+clave(ambiente, "intensity", a0, AMBIENTE_FUERA, "step")
+clave(ambiente, "intensity", b0, AMBIENTE_DENTRO, "step")
+clave(ambiente, "intensity", g0, AMBIENTE_FUERA, "step")
 
 # =============================================================================
 # 5. EL TITULO: el logo aparece sobre las puertas con el portazo
@@ -751,6 +776,13 @@ cmds.setAttr("defaultResolution.deviceAspectRatio", 1920.0 / 1080.0)
 cmds.setAttr("defaultRenderGlobals.startFrame", 1)
 cmds.setAttr("defaultRenderGlobals.endFrame", F_FIN)
 cmds.setAttr("hardwareRenderingGlobals.multiSampleEnable", 1)
+cmds.setAttr("hardwareRenderingGlobals.ssaoEnable", OCLUSION > 0)
+cmds.setAttr("hardwareRenderingGlobals.ssaoAmount", OCLUSION)
+cmds.setAttr("hardwareRenderingGlobals.ssaoRadius", 8)
+cmds.setAttr("hardwareRenderingGlobals.ssaoSamples", 32)
+cmds.setAttr("hardwareRenderingGlobals.bloomEnable", RESPLANDOR > 0)
+cmds.setAttr("hardwareRenderingGlobals.bloomThreshold", 0.85)
+cmds.setAttr("hardwareRenderingGlobals.bloomAmount", RESPLANDOR)
 cmds.setAttr("perspShape.renderable", 0)
 cmds.setAttr(cmds.listRelatives(cam_a, shapes=True)[0] + ".renderable", 1)
 
