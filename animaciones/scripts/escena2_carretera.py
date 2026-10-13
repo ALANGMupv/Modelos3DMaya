@@ -68,6 +68,10 @@ TRAMO_B = (3300.0, 1700.0)
 # Fotogramas que tarda en recorrer el tramo B entero. El plano B corta antes de
 # que lo acabe; asi la velocidad no cambia aunque se acorte o alargue el plano.
 FOTOGRAMAS_TRAMO_B = 83
+# Cuanto acompana la camara B a la furgoneta a lo largo de la carretera: 0 = fija
+# (el giro se acelera mucho cuando pasa por delante y parece que cambia de
+# velocidad), 1 = va a su lado sin girar.
+SEGUIMIENTO_B = 0.3
 TRAMO_C = (2700.0, 800.0)
 Z_INICIO_GIRO_PLANO_D = 1200.0
 
@@ -336,9 +340,14 @@ clave(relleno_van, "intensity", a0, 320.0)
 clave(relleno_van, "intensity", a1 + 1, 0.0)
 cmds.keyTangent(relleno_van, attribute="intensity", outTangentType="step")
 
-# B: fija al borde del bosque, girando para seguir a la furgoneta al pasar.
+# B: al borde del bosque, girando para seguir a la furgoneta y avanzando con
+# ella una parte del camino (SEGUIMIENTO_B) para que el giro sea uniforme.
 cam_b = crear_camara("CAM_B_lateral")
-cmds.move(-3885, 90, (TRAMO_B[0] + TRAMO_B[1]) / 2.0, cam_b)
+z_medio_b = (TRAMO_B[0] + Z_CORTE_B) / 2.0
+cmds.move(-3885, 90, z_medio_b, cam_b)
+for fotograma, z_van in ((b0, TRAMO_B[0]), (b1, Z_CORTE_B)):
+    clave(cam_b, "translateZ", fotograma, z_medio_b + SEGUIMIENTO_B * (z_van - z_medio_b))
+cmds.keyTangent(cam_b, attribute="translateZ", inTangentType="linear", outTangentType="linear")
 objetivo_b = cmds.spaceLocator(name="OBJETIVO_camara_B")[0]
 cmds.parent(objetivo_b, van_ruta, relative=True)
 cmds.move(0, 100, 0, objetivo_b, localSpace=True)
