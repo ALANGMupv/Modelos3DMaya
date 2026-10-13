@@ -97,6 +97,9 @@ ARREGLO_TEJADO = {
     "ENT:Remate_Alero_Tejado_11_Room_Finsh_L": (183.871053, 0.0, 0.0),
     "ENT:Remate_Alero_Tejado_11_Room_Finsh_R": (24.947988, 0.0, 0.0),
 }
+# Franjas sin techo en el recibidor, entre un plano de techo y el siguiente
+# (X de inicio, X de fin). Por ellas se veian las tejas desde dentro.
+HUECOS_TECHO = [(-1778.0, -1760.0), (-1078.0, -1060.0)]
 
 # Vegetacion anadida a la izquierda de la casa (lado -Z), con modelos del entorno.
 REDUCCION_ARBOLES = 50     # % de caras que se quitan a los arboles anadidos
@@ -204,6 +207,19 @@ ambiente = cmds.ambientLight(name="LUZ_ambiente_noche", rgb=(0.45, 0.55, 0.9), i
 
 for pieza_tejado, desplazamiento in ARREGLO_TEJADO.items():
     cmds.setAttr(pieza_tejado + ".translate", desplazamiento[0], desplazamiento[1], desplazamiento[2], type="double3")
+
+# Los huecos del techo se tapan con tiras copiadas del propio techo (mismo
+# material), un poco mas anchas que el hueco y 3 mm mas bajas para que, donde
+# se solapan con el techo original, no parpadeen.
+for i, (x_desde, x_hasta) in enumerate(HUECOS_TECHO):
+    tira = cmds.duplicate("ENT:Techo_Plane__1__Room_Finish", name="Techo_tapa_hueco_%d" % i)[0]
+    tira = cmds.parent(tira, world=True)[0]
+    x0, y0, z0, x1, y1, z1 = cmds.exactWorldBoundingBox(tira)
+    cmds.scale((x_hasta - x_desde + 14) / (x1 - x0), 1, 1, tira, pivot=((x0 + x1) / 2.0, 0, 0), relative=True)
+    cmds.move((x_desde + x_hasta) / 2.0 - (x0 + x1) / 2.0, -0.3, 0, tira, relative=True)
+# El tejado de la habitacion del fondo asomaba 3 cm por debajo del techo del
+# recibidor y se veia por el segundo hueco; se sube un poco.
+cmds.move(0, 4, 0, "ENT:Tejado_04_Room_4_x_6", relative=True)
 
 # Cielo: esfera enorme con la foto de cielo estrellado en la mitad de arriba.
 cielo = cmds.polySphere(name="CIELO_noche", radius=45000, subdivisionsX=32, subdivisionsY=16)[0]
