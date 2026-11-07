@@ -20,3 +20,8 @@ Desktop.ini
 
 # macOS
 .DS_Store
+# Renders del trailer (imagenes pesadas, no van al repo)
+animaciones/render/
+
+# Scripts que generan las escenas (solo en local)
+animaciones/scripts/
